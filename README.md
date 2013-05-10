@@ -4,12 +4,9 @@ Python utilite using httplib to share files throught yandex.disk connected via w
 
 = Installing =
 
-#1. You must connect yandex.disk through WebDav and install xclip:
+#1. You must install davfs:
 
 * install _davfs2_ package
-* ```mkdir yadisk```
-* ```mount -t webdav https://webdav.yandex.ru yadisk```
-* install _xclip_ package
 
 #2. You must get private OAuth token for application:
 
@@ -20,7 +17,6 @@ Python utilite using httplib to share files throught yandex.disk connected via w
 
 = Usage =
 
+* yadisk --help
 * yadisk FILE - share FILE and copy shortlink to the clipboard via xclip
-* yadisk FILE u - make FILE private
-* yadisk [PATH] status - check is dir under yadi.sk
-
+* yadisk u FILE - make FILE private
