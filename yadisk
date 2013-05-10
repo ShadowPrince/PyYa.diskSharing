@@ -9,6 +9,7 @@ TOKEN = '#put_token_here#' # yandex token
 YANDEX_WEBDAV = 'https://webdav.yandex.ru/' # yandex webdav's adress
 YADISK_DIR = '/media/yadisk' # directory where yadisk should be located
 MOUNT_SUDO = 1 # use sudo for mount/umount commands? 
+XCLIP_ENABLED = 1 # 
 
 MOUNT_CMD = '{sudo} mount -t davfs {webdav} {disk}'
 UMOUNT_CMD = '{sudo} umount {disk}'
@@ -25,6 +26,8 @@ def get_optparser():
 
     parser.add_option('-q', '--quiet', 
             action='store_true', help='?')
+    parser.add_option('-x', '--xclip-disable', 
+            action='store_false', help='Disable clipboard')
     parser.add_option('', '--sudo', default=MOUNT_SUDO,
             help='Use sudo for mount/umount commands')
     parser.add_option('', '--dir', default=YADISK_DIR,
@@ -92,10 +95,11 @@ if __name__ == '__main__':
     try:
         if op in ops.get('share'):
             link = share_file(opts, normalize_path(opts, args[0]))
-            os.system(
-                    'echo "%s" | xclip -selection clipboard' 
-                    % 
-                    link)
+            if XCLIP_ENABLED and not opts.xclip_disable:
+                os.system(
+                        'echo "%s" | xclip -selection clipboard &> /dev/null'
+                        % 
+                        link)
             if not opts.quiet:
                 print(link)
         elif op in ops.get('unshare'):
