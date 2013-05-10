@@ -1,26 +1,56 @@
 #!/usr/bin/env python
-import httplib
+from optparse import OptionParser
+from itertools import chain
+import http.client
 import os
 import sys
 
-# TOKEN = 'Put token there'
+TOKEN = '#put_token_here#' # yandex token
+YANDEX_WEBDAV = 'https://webdav.yandex.ru/' # yandex webdav's adress
+YADISK_DIR = '/media/yadisk' # directory where yadisk should be located
+MOUNT_SUDO = 1 # use sudo for mount/umount commands? 
 
+MOUNT_CMD = '{sudo} mount -t davfs {webdav} {disk}'
+UMOUNT_CMD = '{sudo} umount {disk}'
 
-def share_file(path, token):
-    connection = httplib.HTTPSConnection('webdav.yandex.ru')
+def get_optparser():
+    parser = OptionParser(epilog='http://github.com/shadowprince/pyyadisk/ v 2.0')
+    parser.set_usage('yadisk [OPERATION=share] [ARGS...]\n' + ''.join([
+            '\nOperations:',
+            '\n   share [FILE] - share file stored under webdav',
+            '\n   u|unshare [FILE] - unshare file',
+            '\n   m|mount - mount yadisk',
+            '\n   um|umount - umount yadisk',
+            ]))
+
+    parser.add_option('-q', '--quiet', 
+            action='store_true', help='?')
+    parser.add_option('', '--sudo', default=MOUNT_SUDO,
+            help='Use sudo for mount/umount commands')
+    parser.add_option('', '--dir', default=YADISK_DIR,
+            help='Location of yandex disk')
+    parser.add_option('', '--webdav', default=YANDEX_WEBDAV,
+            help='Yandex webdav\'s adress')
+    parser.add_option('', '--token', default=TOKEN,
+            help='You token')
+
+    return parser
+
+def share_file(opts, path):
+    connection = http.client.HTTPSConnection(''.join(opts.webdav.split('/')[2:-1]))
     connection.request('POST', ('%s?publish' % path), '', {
-                       'Authorization': 'OAuth %s' % token
+                       'Authorization': 'OAuth %s' % opts.token
                        })
     response = connection.getresponse()
     if response.status == 302:
-        return response.getheader('Location')
+        return response.getheader('Location').strip()
     else:
         raise EnvironmentError('Failed to share file: %s' % response.reason)
 
-def unshare_file(path, token):
-    connection = httplib.HTTPSConnection('webdav.yandex.ru')
+def unshare_file(opts, path):
+    connection = http.client.HTTPSConnection(''.join(opts.webdav.split('/')[2:-1]))
     connection.request('POST', ('%s?unpublish' % path), '', {
-                       'Authorization': 'OAuth %s' % token
+                       'Authorization': 'OAuth %s' % opts.token
                        })
     response = connection.getresponse()
     if response.status == 200:
@@ -28,43 +58,55 @@ def unshare_file(path, token):
     else:
         raise EnvironmentError('Failed to unshare file: %s' % response.reason)
 
-def get_yad_path():
-    os.system('df | grep webdav.yandex | awk \'{print $6}\' > /tmp/pyyad')
-    return open('/tmp/pyyad').read()
+def disk_mount(opts):
+    os.system(MOUNT_CMD.format(
+        sudo='sudo' if opts.sudo else '',
+        webdav=opts.webdav,
+        disk=opts.dir))
 
-def normalize_path(path):
-    yad = get_yad_path().strip()
+def disk_umount(opts):
+    os.system(UMOUNT_CMD.format(
+        sudo='sudo' if opts.sudo else '',
+        disk=opts.dir))
+
+def normalize_path(opt, path):
+    yad = opt.dir.strip()
     if not path.startswith(yad):
         raise EnvironmentError('File %s is not under yadi.sk control!' % path)
     else:
         return path.split(yad)[1]
 
 if __name__ == '__main__':
-    path = None
-    try:
-        path = os.path.abspath(sys.argv[1])
-        operation = sys.argv[2]
-    except IndexError:
-        if path:
-            operation = 'share'
-        else:
-            path = os.getcwd()
-            operation = 'status'
+    (opts, args) = get_optparser().parse_args()
+    
+    ops = { 'share': ['s', 'share'],
+            'unshare': ['u', 'unshare'],
+            'mount': ['m', 'mount'],
+            'umount': ['um', 'umount'],}
 
-    if operation == 'share':
-        try:
-            link = share_file(normalize_path(path), TOKEN)
-            os.system('echo "%s" | xclip -selection clipboard' % link)
-        except EnvironmentError, e:
-            print e
-    elif operation == 'u':
-        try:
-            unshare_file(normalize_path(path), TOKEN)
-        except EnvironmentError, e:
-            print e
-    elif operation == 'status':
-        try:
-            normalize_path(path)
-            print 'This dir is under yadi.sk'
-        except EnvironmentError, e:
-            print 'This dir is not under yadi.sk'
+    op = ((lambda x: x.pop(0)) if len(args) else (lambda x: 'share'))(args)
+    if op not in list(chain.from_iterable(list(ops.values()))):
+        args.append(op)
+        op = 'share'
+
+    try:
+        if op in ops.get('share'):
+            link = share_file(opts, normalize_path(opts, args[0]))
+            os.system(
+                    'echo "%s" | xclip -selection clipboard' 
+                    % 
+                    link)
+            if not opts.quiet:
+                print(link)
+        elif op in ops.get('unshare'):
+            unshare_file(opts, normalize_path(opts, args[0]))
+        elif op in ops.get('mount'):
+            disk_mount(opts)
+        elif op in ops.get('umount'):
+            disk_umount(opts)
+    except (EnvironmentError, IndexError) as e:
+        if isinstance(e, IndexError):
+            print('PATH must be provided!')
+        else:
+            print(e)
+
