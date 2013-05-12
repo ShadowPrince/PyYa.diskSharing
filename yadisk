@@ -16,7 +16,7 @@ MOUNT_CMD = '{sudo} mount -t davfs {webdav} {disk}'
 UMOUNT_CMD = '{sudo} umount {disk}'
 
 def get_optparser():
-    parser = OptionParser(epilog='http://github.com/shadowprince/pyyadisk/ v 2.01')
+    parser = OptionParser(epilog='http://github.com/shadowprince/pyyadisk/ v 2.02')
     parser.set_usage('yadisk [OPERATION=share] [ARGS...]\n' + ''.join([
             '\nOperations:',
             '\n   share [FILE] - share file stored under webdav',
@@ -30,13 +30,13 @@ def get_optparser():
     parser.add_option('-x', '--xclip-disable', 
             action='store_true', help='Disable clipboard')
     parser.add_option('', '--sudo', default=MOUNT_SUDO,
-            help='Use sudo for mount/umount commands')
+            help='Use sudo for mount/umount commands (default = %s)' % MOUNT_SUDO)
     parser.add_option('', '--dir', default=YADISK_DIR,
-            help='Location of yandex disk')
+            help='Location of yandex disk (default = %s)' % YADISK_DIR)
     parser.add_option('', '--webdav', default=YANDEX_WEBDAV,
-            help='Yandex webdav\'s adress')
+            help='Yandex webdav\'s adress (default = %s)' % YANDEX_WEBDAV)
     parser.add_option('', '--token', default=TOKEN,
-            help='You token')
+            help='Your token')
 
     return parser
 
@@ -64,13 +64,13 @@ def unshare_file(opts, path):
 
 def disk_mount(opts):
     os.system(MOUNT_CMD.format(
-        sudo='sudo' if opts.sudo else '',
+        sudo='sudo' if opts.sudo != "0" else '',
         webdav=opts.webdav,
         disk=opts.dir))
 
 def disk_umount(opts):
     os.system(UMOUNT_CMD.format(
-        sudo='sudo' if opts.sudo else '',
+        sudo='sudo' if opts.sudo != "0" else '',
         disk=opts.dir))
 
 def normalize_path(opt, path):
