@@ -22,11 +22,11 @@ class Parser(HTMLParser):
         super().__init__()
 
     def handle_starttag(self, tag, attrs):
-        if tag == tag:
+        if self.tag == tag:
             self.inside = True
 
     def handle_endtag(self, tag):
-        if tag == tag:
+        if self.tag == tag:
             self.inside = False
 
     def handle_data(self, data):
